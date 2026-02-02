@@ -1,0 +1,36 @@
+INSERT INTO recipes (
+    name,
+    created_at,
+    rating_value,
+    rating_count,
+    preparation_time,
+    cooking_time,
+    category,
+    cuisine,
+    ingredients,
+    ingredients_raw,
+    instructions,
+    cooking_methods,
+    implements,
+    number_of_steps,
+    nutrition,
+    url
+)
+VALUES (
+    :name,
+    :created_at,
+    :rating_value,
+    :rating_count,
+    :preparation_time,
+    :cooking_time,
+    :category,
+    :cuisine,
+    :ingredients,
+    :ingredients_raw,
+    :instructions,
+    :cooking_methods,
+    :implements,
+    :number_of_steps,
+    :nutrition,
+    :url
+);

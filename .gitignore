@@ -1,0 +1,19 @@
+# PyCharm / IntelliJ
+.idea/
+*.iml
+
+# Python cache / bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments (common with poetry/venv)
+.venv/
+venv/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
