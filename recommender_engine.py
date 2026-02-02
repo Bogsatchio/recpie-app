@@ -11,13 +11,13 @@ from qdrant_client.models import (
     Prefetch
 )
 
-
 class RecommenderEngine():
 
-    def __init__(self, engine, qd_client):
+    def __init__(self, engine, qd_client, recipe_repository):
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
         self.qd_client = qd_client
         self.engine = engine
+        self.recipe_repository = recipe_repository
 
     def find_recipe(self, user_ingredients: str, k: int = 5, category: str = None, cuisine: str = None) -> pd.DataFrame:
         query_vec = self.model.encode(user_ingredients, normalize_embeddings=True)
@@ -54,8 +54,18 @@ class RecommenderEngine():
         )
 
         hits = {hit.payload["ID"]: hit.score for hit in results.points}
-        q_df = pd.read_sql(f"SELECT id, name, ingredients FROM recipes where id in {tuple(hits)}", self.engine)
-        q_df['score'] = q_df['id'].map(hits)
+        if not hits:
+            return pd.DataFrame(columns=["id", "name", "ingredients", "score"])
+
+        q_df = self.recipe_repository.get_recipes_by_ids(
+            self.engine,
+            hits.keys(),
+            columns=["id", "name", "ingredients"],
+        )
+        if q_df.empty:
+            return pd.DataFrame(columns=["id", "name", "ingredients", "score"])
+
+        q_df["score"] = q_df["id"].map(hits)
 
         return q_df.sort_values(by="score", ascending=False)
 
