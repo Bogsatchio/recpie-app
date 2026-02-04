@@ -12,6 +12,7 @@ from qdrant_client.http import models as qdrant_models
 
 BOOSTER_VALUE = 0.15
 PENALTY_VALUE = 0.8
+HITS_BEFORE_BOOSTING = 200
 
 
 class RecommenderEngine():
@@ -38,6 +39,13 @@ class RecommenderEngine():
                 )
 
         return Filter(should=should_conditions) if should_conditions else None
+    
+    def _df_to_records(self, df: pd.DataFrame) -> list[dict]:
+        if df is None or df.empty:
+            return []
+        safe_df = df.replace([float("inf"), float("-inf")], pd.NA)
+        safe_df = safe_df.astype(object).where(pd.notnull(safe_df), None)
+        return safe_df.to_dict(orient="records")
 
     def _query_qdrant(
         self,
@@ -45,7 +53,6 @@ class RecommenderEngine():
         collection_name: str,
         query_vec,
         boost_filter: Filter | None,
-        k: int,
         score_threshold: float,
     ):
         return self.qd_client.query_points(
@@ -60,25 +67,32 @@ class RecommenderEngine():
             # final rerank query = raw vector (NOT SearchRequest)
             query=query_vec.tolist(),
             query_filter=boost_filter,
-            limit=k,
+            limit=HITS_BEFORE_BOOSTING,
             score_threshold=score_threshold,
             with_payload=True
         )
 
-    def _hits_to_df(self, hits) -> pd.DataFrame:
+    def _hits_to_df(self, hits, k: int) -> pd.DataFrame:
         if not hits:
-            return pd.DataFrame(columns=["id", "name", "ingredients", "score"])
+            return pd.DataFrame()
 
         q_df = self.recipe_repository.get_recipes_by_ids(
             self.engine,
             hits.keys(),
-            columns=["id", "name", "ingredients"],
         )
         if q_df.empty:
-            return pd.DataFrame(columns=["id", "name", "ingredients", "score"])
+            q_df["score"] = pd.Series(dtype="float")
+            return q_df
 
         q_df["score"] = q_df["id"].map(hits)
-        return q_df.sort_values(by="score", ascending=False)
+        q_df = q_df[q_df["score"].notna()]
+        if q_df.empty:
+            return pd.DataFrame()
+
+        q_df = q_df.sort_values(by="score", ascending=False).head(k)
+        q_df = q_df.replace([float("inf"), float("-inf")], pd.NA)
+        q_df = q_df.astype(object).where(pd.notnull(q_df), None)
+        return q_df
 
     def _normalize_ingredients(self, ingredients):
         if not ingredients:
@@ -129,7 +143,7 @@ class RecommenderEngine():
             penalty += PENALTY_VALUE
         return max(0.0, score * (1 - penalty))
 
-    def find_recipe_by_ingredients(self, user_ingredients: str, k: int = 5, category: str = None, cuisine: str = None) -> pd.DataFrame:
+    def find_recipe_by_ingredients(self, user_ingredients: str, k: int = 5, category: str = None, cuisine: str = None) -> list[dict]:
         query_vec = self.model.encode(user_ingredients, normalize_embeddings=True)
         query_ingredients = self._normalize_ingredients(user_ingredients)
 
@@ -138,7 +152,6 @@ class RecommenderEngine():
             collection_name=self.recipes_collection,
             query_vec=query_vec,
             boost_filter=boost_filter,
-            k=k,
             score_threshold=0.2,
         )
 
@@ -158,7 +171,7 @@ class RecommenderEngine():
             )
             for hit in results.points
         }
-        return self._hits_to_df(hits)
+        return self._df_to_records(self._hits_to_df(hits, k))
 
     def find_recipe_by_name(
         self,
@@ -167,7 +180,7 @@ class RecommenderEngine():
         category: str = None,
         cuisine: str = None,
         ingredients: list[str] = None,
-    ) -> pd.DataFrame:
+    ) -> list[dict]:
         query_vec = self.model.encode(recipe_name, normalize_embeddings=True)
 
         boost_filter = self._build_boost_filter(category=category, cuisine=cuisine, ingredients=ingredients)
@@ -175,7 +188,6 @@ class RecommenderEngine():
             collection_name=self.names_collection,
             query_vec=query_vec,
             boost_filter=boost_filter,
-            k=200,
             score_threshold=0.3,
         )
 
@@ -195,7 +207,7 @@ class RecommenderEngine():
             )
             for hit in results.points
         }
-        return self._hits_to_df(hits)
+        return self._df_to_records(self._hits_to_df(hits, k))
 
     def upsert_embedding(self, recipe_id: int, recipe) -> None:
         """

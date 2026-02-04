@@ -24,14 +24,14 @@ def index():
 @api.get("/query_by_ingredients")
 def query_by_ingredients(ingredients: str, k: int = 5, category: str = None, cuisine: str = None):
     results = recommender_engine.find_recipe_by_ingredients(ingredients, k, category, cuisine)
-    return {"results": results.to_dict(orient='records')}
+    return {"results": results}
 
 
 # Typical payload (name = "lasagna")
 @api.get("/query_by_name")
 def query_by_name(name: str, k: int = 5, category: str = None, cuisine: str = None, ingredients: list[str] = Query(None)):
     results = recommender_engine.find_recipe_by_name(name, k, category, cuisine, ingredients)
-    return {"results": results.to_dict(orient='records')}
+    return {"results": results}
 
 
 # recipes table CRUD

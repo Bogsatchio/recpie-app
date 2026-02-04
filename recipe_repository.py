@@ -75,14 +75,17 @@ class RecipeRepository:
         """
         Fetch recipe rows for the given IDs.
 
+        By default, selects all columns from the recipes table. Use `columns`
+        to narrow down the returned columns.
         Returns an empty DataFrame if `ids` is empty.
         """
         ids_list = [int(i) for i in ids]
         if not ids_list:
+            if columns:
+                return pd.DataFrame(columns=columns)
             return pd.DataFrame()
 
-        cols = columns or ["id", "name", "ingredients"]
-        col_sql = ", ".join(cols)
+        col_sql = ", ".join(columns) if columns else "*"
 
         stmt = text(f"SELECT {col_sql} FROM recipes WHERE id IN :ids").bindparams(
             bindparam("ids", expanding=True)
