@@ -1,11 +1,10 @@
 import uvicorn
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from qdrant_client.http import models
 
 from recommender_engine import RecommenderEngine
-from database import get_db, engine, qd_client, QD_COLLECTION
+from database import get_db, engine, qd_client
 from utils import extract_ner
 from recipe_repository import RecipeRepository
 from schemas.recipe import RecipeCreate, RecipeUpdate
@@ -22,40 +21,26 @@ def index():
 
 
 # Typical payload (ingredients = "avocado, tomato, toast")
-@api.get("/query")
-def query(ingredients: str, k: int = 5, category: str = None, cuisine: str = None):
-    results = recommender_engine.find_recipe(ingredients, k, category, cuisine)
+@api.get("/query_by_ingredients")
+def query_by_ingredients(ingredients: str, k: int = 5, category: str = None, cuisine: str = None):
+    results = recommender_engine.find_recipe_by_ingredients(ingredients, k, category, cuisine)
     return {"results": results.to_dict(orient='records')}
 
+
+# Typical payload (name = "lasagna")
+@api.get("/query_by_name")
+def query_by_name(name: str, k: int = 5, category: str = None, cuisine: str = None, ingredients: list[str] = Query(None)):
+    results = recommender_engine.find_recipe_by_name(name, k, category, cuisine, ingredients)
+    return {"results": results.to_dict(orient='records')}
+
+
+# recipes table CRUD
 
 @api.post("/add")
 def add_recipe(recipe: RecipeCreate, db: Session = Depends(get_db)):
     try:
         recipe_id = recipe_repository.insert_recipe(db, recipe)
-        ingredients_to_embed = ", ".join(recipe.ingredients)
-        print(ingredients_to_embed)
-
-        embedding = recommender_engine.model.encode(
-            ingredients_to_embed,
-            normalize_embeddings=True
-        )
-
-        point = models.PointStruct(
-            id=recipe_id,
-            vector=embedding,
-            payload={
-                "ID": recipe_id,
-                "category": recipe.category,
-                "cuisine": recipe.cuisine,
-                "cooking_methods": recipe.cooking_methods
-            }
-        )
-
-        qd_client.upsert(
-            collection_name=QD_COLLECTION,
-            points=[point]
-        )
-
+        recommender_engine.upsert_embedding(recipe_id=recipe_id, recipe=recipe)
         return {
             "message": "Recipe added successfully",
             "recipe_id": recipe_id
@@ -84,23 +69,8 @@ def update_recipe(recipe_id: int, recipe_update: RecipeUpdate, db: Session = Dep
         if rows_updated == 0:
             raise HTTPException(status_code=500, detail="Failed to update recipe")
 
-        ingredients_to_embed = ", ".join(merged_recipe["ingredients"])
-        embedding = recommender_engine.model.encode(
-            ingredients_to_embed,
-            normalize_embeddings=True,
-        )
-        point = models.PointStruct(
-            id=recipe_id,
-            vector=embedding,
-            payload={
-                "ID": recipe_id,
-                "category": merged_recipe["category"],
-                "cuisine": merged_recipe["cuisine"],
-                "cooking_methods": merged_recipe["cooking_methods"],
-            },
-        )
         try:
-            qd_client.upsert(collection_name=QD_COLLECTION, points=[point])
+            recommender_engine.upsert_embedding(recipe_id=recipe_id, recipe=merged_recipe)
         except Exception as qdrant_error:
             print(f"Warning: Failed to update recipe {recipe_id} in Qdrant: {str(qdrant_error)}")
 
@@ -128,12 +98,7 @@ def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
         
         # Delete from Qdrant to keep it synchronized
         try:
-            qd_client.delete(
-                collection_name=QD_COLLECTION,
-                points_selector=models.PointIdsList(
-                    points=[recipe_id]
-                )
-            )
+            recommender_engine.remove_recipe_from_indexes(recipe_id)
         except Exception as qdrant_error:
             # Log the Qdrant error but don't fail the request since MySQL delete succeeded
             # In production, you might want to log this to a monitoring system

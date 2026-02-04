@@ -5,7 +5,8 @@ from qdrant_client import QdrantClient
 DATABASE_URL = "mysql+pymysql://dev:dev@localhost:3306/recipe_app"
 
 # setup qdrant client connection
-QD_COLLECTION = "recipes"
+QD_INGREDIENT_COLLECTION = "ingredients"
+QD_NAME_COLLECTION = "names"
 qd_client = QdrantClient(host="localhost", port=6333)
 
 
@@ -23,3 +24,4 @@ def get_db():
         yield db
     finally:
         db.close()
+
