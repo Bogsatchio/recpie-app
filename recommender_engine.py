@@ -1,4 +1,5 @@
 import pandas as pd
+from enum import Enum
 from sentence_transformers import SentenceTransformer
 from database import QD_INGREDIENT_COLLECTION, QD_NAME_COLLECTION
 
@@ -25,13 +26,23 @@ class RecommenderEngine():
         self.recipes_collection = QD_INGREDIENT_COLLECTION
         self.names_collection = QD_NAME_COLLECTION
 
+    def _enum_value(self, value):
+        return value.value if isinstance(value, Enum) else value
+
+    def _enum_list(self, values):
+        if values is None:
+            return []
+        return [self._enum_value(value) for value in values]
+
 
     def _build_boost_filter(self, *, category: str = None, cuisine: str = None, ingredients: list[str] = None) -> Filter | None:
+        category_value = self._enum_value(category)
+        cuisine_value = self._enum_value(cuisine)
         should_conditions = []
-        if category is not None:
-            should_conditions.append(FieldCondition(key="category", match=MatchValue(value=category)))
-        if cuisine is not None:
-            should_conditions.append(FieldCondition(key="cuisine", match=MatchValue(value=cuisine)))
+        if category_value is not None:
+            should_conditions.append(FieldCondition(key="category", match=MatchValue(value=category_value)))
+        if cuisine_value is not None:
+            should_conditions.append(FieldCondition(key="cuisine", match=MatchValue(value=cuisine_value)))
         if ingredients is not None:
             for ingredient in ingredients:
                 should_conditions.append(
@@ -109,15 +120,17 @@ class RecommenderEngine():
         category: str | None,
         cuisine: str | None,
     ) -> float:
+        category_value = self._enum_value(category)
+        cuisine_value = self._enum_value(cuisine)
         boost = 0.0
         query_ingredients = self._normalize_ingredients(ingredients)
         if query_ingredients:
             payload_ingredients = self._normalize_ingredients(payload.get("ingredients"))
             matched = len(set(query_ingredients) & set(payload_ingredients))
             boost += BOOSTER_VALUE * matched
-        if category is not None and payload.get("category") == category:
+        if category_value is not None and payload.get("category") == category_value:
             boost += BOOSTER_VALUE
-        if cuisine is not None and payload.get("cuisine") == cuisine:
+        if cuisine_value is not None and payload.get("cuisine") == cuisine_value:
             boost += BOOSTER_VALUE
         return score * (1 + boost)
 
@@ -129,6 +142,8 @@ class RecommenderEngine():
         category: str | None,
         cuisine: str | None,
     ) -> float:
+        category_value = self._enum_value(category)
+        cuisine_value = self._enum_value(cuisine)
         penalty = 0.0
         query_ingredients = self._normalize_ingredients(ingredients)
         payload_ingredients = self._normalize_ingredients(payload.get("ingredients"))
@@ -136,10 +151,10 @@ class RecommenderEngine():
             missing = len(set(query_ingredients) - set(payload_ingredients))
             penalty += PENALTY_VALUE * missing
         payload_category = payload.get("category")
-        if category is not None and payload_category is not None and payload_category != category:
+        if category_value is not None and payload_category is not None and payload_category != category_value:
             penalty += PENALTY_VALUE
         payload_cuisine = payload.get("cuisine")
-        if cuisine is not None and payload_cuisine is not None and payload_cuisine != cuisine:
+        if cuisine_value is not None and payload_cuisine is not None and payload_cuisine != cuisine_value:
             penalty += PENALTY_VALUE
         return max(0.0, score * (1 - penalty))
 
@@ -217,14 +232,14 @@ class RecommenderEngine():
         if isinstance(recipe, dict):
             ingredients = recipe["ingredients"]
             name = recipe["name"]
-            category = recipe["category"]
-            cuisine = recipe["cuisine"]
+            category = self._enum_list(recipe["category"])
+            cuisine = self._enum_value(recipe["cuisine"])
             cooking_methods = recipe["cooking_methods"]
         else:
             ingredients = recipe.ingredients
             name = recipe.name
-            category = recipe.category
-            cuisine = recipe.cuisine
+            category = self._enum_list(recipe.category)
+            cuisine = self._enum_value(recipe.cuisine)
             cooking_methods = recipe.cooking_methods
 
         ingredients_text = ", ".join(ingredients)

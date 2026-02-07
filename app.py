@@ -1,36 +1,74 @@
 import uvicorn
+from pathlib import Path
 
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from recommender_engine import RecommenderEngine
 from database import get_db, engine, qd_client
 from utils import extract_ner
 from recipe_repository import RecipeRepository
+from schemas.enums import Category, Cuisine
 from schemas.recipe import RecipeCreate, RecipeUpdate
 
 api = FastAPI()
+
+BASE_DIR = Path(__file__).resolve().parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+api.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 recipe_repository = RecipeRepository()
 recommender_engine = RecommenderEngine(engine, qd_client, recipe_repository)
 
 
-@api.get("/")
-def index():
-    return {"message": "Hello World"}
+@api.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "cuisines": [cuisine.value for cuisine in Cuisine],
+            "categories": [category.value for category in Category],
+        },
+    )
 
 
 # Typical payload (ingredients = "avocado, tomato, toast")
 @api.get("/query_by_ingredients")
-def query_by_ingredients(ingredients: str, k: int = 5, category: str = None, cuisine: str = None):
-    results = recommender_engine.find_recipe_by_ingredients(ingredients, k, category, cuisine)
+def query_by_ingredients(
+    ingredients: str,
+    k: int = 5,
+    category: Category | None = None,
+    cuisine: Cuisine | None = None,
+):
+    results = recommender_engine.find_recipe_by_ingredients(
+        ingredients,
+        k,
+        category.value if category else None,
+        cuisine.value if cuisine else None,
+    )
     return {"results": results}
 
 
 # Typical payload (name = "lasagna")
 @api.get("/query_by_name")
-def query_by_name(name: str, k: int = 5, category: str = None, cuisine: str = None, ingredients: list[str] = Query(None)):
-    results = recommender_engine.find_recipe_by_name(name, k, category, cuisine, ingredients)
+def query_by_name(
+    name: str,
+    k: int = 5,
+    category: Category | None = None,
+    cuisine: Cuisine | None = None,
+    ingredients: list[str] = Query(None),
+):
+    results = recommender_engine.find_recipe_by_name(
+        name,
+        k,
+        category.value if category else None,
+        cuisine.value if cuisine else None,
+        ingredients,
+    )
     return {"results": results}
 
 

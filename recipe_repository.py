@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from enum import Enum
 from typing import Any, Iterable, List, Optional
 from pathlib import Path
 
@@ -24,6 +25,14 @@ class RecipeRepository:
     def __init__(self) -> None:
         # Use module-level INSERT_RECIPE_SQL by default.
         self._insert_recipe_sql = INSERT_RECIPE_SQL
+    
+    def _enum_value(self, value: Any) -> Any:
+        return value.value if isinstance(value, Enum) else value
+
+    def _enum_list(self, values: Any) -> list:
+        if values is None:
+            return []
+        return [self._enum_value(value) for value in values]
 
     def insert_recipe(self, db: Session, recipe: Any) -> int:
         """
@@ -45,18 +54,18 @@ class RecipeRepository:
                 "rating_count": 0,
                 "preparation_time": recipe.preparation_time,
                 "cooking_time": recipe.cooking_time,
-                # JSON columns
-                "category": json.dumps(recipe.category),
+                # JSON columns (instructions stored as text)
+                "category": json.dumps(self._enum_list(recipe.category)),
                 "ingredients": json.dumps(recipe.ingredients),
                 "ingredients_raw": json.dumps(recipe.ingredients_raw),
-                "instructions": json.dumps(recipe.instructions),
+                "instructions": recipe.instructions,
                 "cooking_methods": json.dumps(recipe.cooking_methods),
                 "implements": json.dumps(recipe.implements),
                 "number_of_steps": recipe.number_of_steps,
                 "nutrition": json.dumps(recipe.nutrition),
                 "url": str(recipe.url) if recipe.url is not None else None,
                 # scalar
-                "cuisine": recipe.cuisine,
+                "cuisine": self._enum_value(recipe.cuisine),
             },
         )
         db.commit()
@@ -64,6 +73,7 @@ class RecipeRepository:
         recipe_id = result.lastrowid
         # MySQL drivers typically return int-compatible IDs here.
         return int(recipe_id)
+
 
     def get_recipes_by_ids(
         self,
@@ -126,7 +136,7 @@ class RecipeRepository:
             "cuisine": row.cuisine,
             "ingredients": json.loads(row.ingredients) if row.ingredients else [],
             "ingredients_raw": json.loads(row.ingredients_raw) if row.ingredients_raw else [],
-            "instructions": json.loads(row.instructions) if row.instructions else [],
+            "instructions": row.instructions,
             "cooking_methods": json.loads(row.cooking_methods) if row.cooking_methods else [],
             "implements": json.loads(row.implements) if row.implements else [],
             "number_of_steps": row.number_of_steps,
@@ -148,11 +158,11 @@ class RecipeRepository:
             "name": ("name", None),
             "preparation_time": ("preparation_time", None),
             "cooking_time": ("cooking_time", None),
-            "category": ("category", json.dumps),
-            "cuisine": ("cuisine", None),
+            "category": ("category", lambda x: json.dumps(self._enum_list(x))),
+            "cuisine": ("cuisine", self._enum_value),
             "ingredients": ("ingredients", json.dumps),
             "ingredients_raw": ("ingredients_raw", json.dumps),
-            "instructions": ("instructions", json.dumps),
+            "instructions": ("instructions", None),
             "cooking_methods": ("cooking_methods", json.dumps),
             "implements": ("implements", json.dumps),
             "number_of_steps": ("number_of_steps", None),

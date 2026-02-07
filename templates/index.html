@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recipe Recommender</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <p class="eyebrow">Recipe Recommender</p>
+        <h1>Find the right dish fast.</h1>
+        <p class="subtitle">Choose a query style or add a new recipe. Results appear below.</p>
+      </header>
+
+      <section class="mode-switch">
+        <button class="mode-btn active" type="button" data-panel="ingredients">Query by ingredients</button>
+        <button class="mode-btn" type="button" data-panel="name">Query by name</button>
+        <button class="mode-btn" type="button" data-panel="add">Add a recipe</button>
+      </section>
+
+      <main class="panel">
+        <div class="panel-content active" data-panel="ingredients">
+          <h2>Ingredients search</h2>
+          <form id="ingredients-form" class="form-grid">
+            <label>
+              Ingredients
+              <textarea name="ingredients" rows="3" placeholder="avocado, tomato, toast" required></textarea>
+            </label>
+            <label>
+              Max results
+              <input type="number" name="k" min="1" value="5">
+            </label>
+            <label>
+              Category
+              <select name="category">
+                <option value="">Any category</option>
+                {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Cuisine
+              <select name="cuisine">
+                <option value="">Any cuisine</option>
+                {% for cuisine in cuisines %}
+                <option value="{{ cuisine }}">{{ cuisine }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="primary" type="submit">Search recipes</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-content" data-panel="name">
+          <h2>Name search</h2>
+          <form id="name-form" class="form-grid">
+            <label>
+              Recipe name
+              <input type="text" name="name" placeholder="lasagna" required>
+            </label>
+            <label>
+              Max results
+              <input type="number" name="k" min="1" value="5">
+            </label>
+            <label>
+              Category
+              <select name="category">
+                <option value="">Any category</option>
+                {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Cuisine
+              <select name="cuisine">
+                <option value="">Any cuisine</option>
+                {% for cuisine in cuisines %}
+                <option value="{{ cuisine }}">{{ cuisine }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="span-2">
+              Optional ingredients filter
+              <input type="text" name="ingredients" placeholder="tomato, basil, olive oil">
+            </label>
+            <div class="form-actions">
+              <button class="primary" type="submit">Search recipes</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-content" data-panel="add">
+          <h2>Add a recipe</h2>
+          <form id="add-form" class="form-grid">
+            <label>
+              Name
+              <input type="text" name="name" placeholder="Chickpea curry" required>
+            </label>
+            <label>
+              Cuisine
+              <select name="cuisine" required>
+                <option value="" disabled selected>Choose a cuisine</option>
+                {% for cuisine in cuisines %}
+                <option value="{{ cuisine }}">{{ cuisine }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="span-2">
+              Category (hold Ctrl/Cmd to select multiple)
+              <select name="category" multiple size="6" required>
+                {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="span-2">
+              Ingredients (comma or new line separated)
+              <textarea name="ingredients" rows="3" placeholder="chickpeas, onion, garlic" required></textarea>
+            </label>
+            <label class="span-2">
+              Ingredients raw (comma or new line separated)
+              <textarea name="ingredients_raw" rows="3" placeholder="1 can chickpeas, 1 onion, 2 cloves garlic" required></textarea>
+            </label>
+            <label class="span-2">
+              Instructions (comma or new line separated)
+              <textarea name="instructions" rows="4" placeholder="Saute onion, simmer with spices, serve warm" required></textarea>
+            </label>
+
+            <details class="span-2 optional">
+              <summary>Optional details</summary>
+              <div class="optional-grid">
+                <label>
+                  Preparation time (minutes)
+                  <input type="number" name="preparation_time" min="0" placeholder="10">
+                </label>
+                <label>
+                  Cooking time (minutes)
+                  <input type="number" name="cooking_time" min="0" placeholder="25">
+                </label>
+                <label>
+                  Number of steps
+                  <input type="number" name="number_of_steps" min="0" placeholder="5">
+                </label>
+                <label>
+                  URL
+                  <input type="url" name="url" placeholder="https://example.com/recipe">
+                </label>
+                <label class="span-2">
+                  Cooking methods (comma or new line separated)
+                  <textarea name="cooking_methods" rows="2" placeholder="saute, simmer"></textarea>
+                </label>
+                <label class="span-2">
+                  Implements (comma or new line separated)
+                  <textarea name="implements" rows="2" placeholder="skillet, pot"></textarea>
+                </label>
+                <label class="span-2">
+                  Nutrition (JSON object)
+                  <textarea name="nutrition" rows="3" placeholder='{"calories": 320, "protein_g": 12}'></textarea>
+                </label>
+              </div>
+            </details>
+
+            <div class="form-actions">
+              <button class="primary" type="submit">Add recipe</button>
+              <p id="add-message" class="status" role="status"></p>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <section class="results">
+        <div class="results-head">
+          <h2>Results</h2>
+          <span id="results-meta">No results yet.</span>
+        </div>
+        <div id="results" class="results-body">
+          <div class="empty">Run a search to see matching recipes.</div>
+        </div>
+      </section>
+    </div>
+
+    <script src="{{ url_for('static', path='app.js') }}"></script>
+  </body>
+</html>
