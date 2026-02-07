@@ -8,11 +8,14 @@ from qdrant_client.models import (
     FieldCondition,
     MatchValue,
     Prefetch,
+    FusionQuery,
+    Fusion,
+    NearestQuery
 )
 from qdrant_client.http import models as qdrant_models
 
-BOOSTER_VALUE = 0.15
-PENALTY_VALUE = 0.8
+BOOSTER_VALUE = 0.08
+PENALTY_VALUE = 0.005
 HITS_BEFORE_BOOSTING = 200
 
 
@@ -66,22 +69,40 @@ class RecommenderEngine():
         boost_filter: Filter | None,
         score_threshold: float,
     ):
-        return self.qd_client.query_points(
+        if boost_filter is None:
+            return self.qd_client.query_points(
+                collection_name=collection_name,
+                query=query_vec.tolist(),
+                limit=HITS_BEFORE_BOOSTING,
+                score_threshold=score_threshold,
+                with_payload=True,
+            )
+
+        results = self.qd_client.query_points(
             collection_name=collection_name,
-            # candidate pool
             prefetch=[
+                # 1. THE VECTOR RANKER
                 Prefetch(
-                    query=query_vec.tolist(),
-                    limit=400
-                )
+                    query=NearestQuery(nearest=query_vec.tolist()),
+                    limit=400,
+                    score_threshold=score_threshold,
+                ),
+
+                # 2. THE SOFT FILTER (BOOST) RANKER
+                # Same vector query, but with a filter to boost matches.
+                Prefetch(
+                    query=NearestQuery(nearest=query_vec.tolist()),
+                    filter=boost_filter,
+                    limit=20,
+                ),
             ],
-            # final rerank query = raw vector (NOT SearchRequest)
-            query=query_vec.tolist(),
-            query_filter=boost_filter,
+            # 3. THE MERGE LOGIC
+            # This looks at both prefetch lists and combines them.
+            query=FusionQuery(fusion=Fusion.RRF),
             limit=HITS_BEFORE_BOOSTING,
-            score_threshold=score_threshold,
-            with_payload=True
+            with_payload=True,
         )
+        return results
 
     def _hits_to_df(self, hits, k: int) -> pd.DataFrame:
         if not hits:
