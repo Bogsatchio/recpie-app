@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v={{ static_version }}">
   </head>
   <body>
     <div class="page">
@@ -188,6 +188,6 @@
       </section>
     </div>
 
-    <script src="{{ url_for('static', path='app.js') }}"></script>
+    <script src="{{ url_for('static', path='app.js') }}?v={{ static_version }}"></script>
   </body>
 </html>

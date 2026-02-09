@@ -287,6 +287,15 @@ tr:nth-child(even) td {
   word-break: break-word;
 }
 
+.cell-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.cell-list li {
+  margin: 0 0 4px;
+}
+
 .empty {
   color: var(--muted);
   padding: 12px 4px;

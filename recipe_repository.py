@@ -9,7 +9,6 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-
 INSERT_RECIPE_SQL = text(Path("sql/insert_recipe.sql").read_text())
 
 
@@ -22,10 +21,11 @@ class RecipeRepository:
     - Execute inserts and simple read queries
     """
 
-    def __init__(self) -> None:
+    def __init__(self, engine: Engine) -> None:
         # Use module-level INSERT_RECIPE_SQL by default.
+        self.engine = engine
         self._insert_recipe_sql = INSERT_RECIPE_SQL
-    
+
     def _enum_value(self, value: Any) -> Any:
         return value.value if isinstance(value, Enum) else value
 
@@ -33,6 +33,11 @@ class RecipeRepository:
         if values is None:
             return []
         return [self._enum_value(value) for value in values]
+
+    def get_ingredients_list(self):
+        df = pd.read_sql_query('SELECT ingredient FROM ingredients', con=self.engine)
+        unique_items = list(df["ingredient"])
+        return unique_items
 
     def insert_recipe(self, db: Session, recipe: Any) -> int:
         """
@@ -74,13 +79,11 @@ class RecipeRepository:
         # MySQL drivers typically return int-compatible IDs here.
         return int(recipe_id)
 
-
     def get_recipes_by_ids(
-        self,
-        engine: Engine,
-        ids: Iterable[int],
-        *,
-        columns: Optional[List[str]] = None,
+            self,
+            ids: Iterable[int],
+            *,
+            columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         Fetch recipe rows for the given IDs.
@@ -101,7 +104,7 @@ class RecipeRepository:
             bindparam("ids", expanding=True)
         )
 
-        return pd.read_sql(stmt, engine, params={"ids": ids_list})
+        return pd.read_sql(stmt, self.engine, params={"ids": ids_list})
 
     def get_recipe_by_id(self, db: Session, recipe_id: int) -> Optional[dict]:
         """

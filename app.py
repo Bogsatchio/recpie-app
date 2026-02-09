@@ -7,9 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from recommender_engine import RecommenderEngine
+from recommender_engine.recommender_engine import RecommenderEngine
 from database import get_db, engine, qd_client
-from utils import extract_ner
 from recipe_repository import RecipeRepository
 from schemas.enums import Category, Cuisine
 from schemas.recipe import RecipeCreate, RecipeUpdate
@@ -20,18 +19,20 @@ BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 api.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
-recipe_repository = RecipeRepository()
-recommender_engine = RecommenderEngine(engine, qd_client, recipe_repository)
+recipe_repository = RecipeRepository(engine)
+recommender_engine = RecommenderEngine(qd_client, recipe_repository)
 
 
 @api.get("/", response_class=HTMLResponse)
 def index(request: Request):
+    static_version = (BASE_DIR / "static" / "app.js").stat().st_mtime_ns
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "cuisines": [cuisine.value for cuisine in Cuisine],
             "categories": [category.value for category in Category],
+            "static_version": static_version,
         },
     )
 

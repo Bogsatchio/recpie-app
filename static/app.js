@@ -11,8 +11,8 @@ const columns = [
   { key: "rating_value", label: "Rating" },
   { key: "rating_count", label: "Rating Count" },
   { key: "cuisine", label: "Cuisine" },
-  { key: "ingredients_raw", label: "Ingredients" },
-  { key: "instructions", label: "Instructions" },
+  { key: "preparation_time", label: "Preparation Time" },
+  { key: "ingredients", label: "Ingredients" },
 ];
 
 const listFields = new Set(["ingredients", "ingredients_raw", "instructions", "cooking_methods", "implements"]);
@@ -31,6 +31,60 @@ function parseList(value) {
     .split(/[\n,]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function parseQuotedList(value) {
+  const items = [];
+  const regex = /'([^']*)'|"([^"]*)"/g;
+  let match;
+  while ((match = regex.exec(value)) !== null) {
+    const item = match[1] ?? match[2];
+    if (item && item.trim()) {
+      items.push(item.trim());
+    }
+  }
+  return items;
+}
+
+function cleanListItem(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value)
+    .trim()
+    .replace(/^[\s\[\]'"`,]+/, "")
+    .replace(/[\s\[\]'"`,]+$/, "")
+    .trim();
+}
+
+function normalizeIngredientsList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => cleanListItem(item)).filter(Boolean);
+  }
+  if (value === null || value === undefined) {
+    return [];
+  }
+  if (typeof value !== "string") {
+    return [];
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return [];
+  }
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    const inner = trimmed.slice(1, -1);
+    const quoted = parseQuotedList(inner).map((item) => cleanListItem(item)).filter(Boolean);
+    if (quoted.length) {
+      const remainder = inner
+        .replace(/'[^']*'|"[^"]*"/g, " ")
+        .replace(/[\[\],]/g, " ")
+        .trim();
+      const tail = remainder ? parseList(remainder).map((item) => cleanListItem(item)).filter(Boolean) : [];
+      return [...quoted, ...tail];
+    }
+    return parseList(inner).map((item) => cleanListItem(item)).filter(Boolean);
+  }
+  return parseList(trimmed).map((item) => cleanListItem(item)).filter(Boolean);
 }
 
 function getSelectedValues(selectEl) {
@@ -96,8 +150,24 @@ function renderResults(items) {
     const row = document.createElement("tr");
     columns.forEach((col) => {
       const cell = document.createElement("td");
-      cell.textContent = formatValue(item[col.key], col.key);
-      if (col.key === "ingredients_raw" || col.key === "instructions") {
+      if (col.key === "ingredients") {
+        const ingredients = normalizeIngredientsList(item[col.key]);
+        if (ingredients.length) {
+          const list = document.createElement("ul");
+          list.classList.add("cell-list");
+          ingredients.forEach((ingredient) => {
+            const li = document.createElement("li");
+            li.textContent = ingredient;
+            list.appendChild(li);
+          });
+          cell.appendChild(list);
+        } else {
+          cell.textContent = formatValue(item[col.key], col.key);
+        }
+      } else {
+        cell.textContent = formatValue(item[col.key], col.key);
+      }
+      if (col.key === "ingredients") {
         cell.classList.add("cell-wrap");
       }
       row.appendChild(cell);
