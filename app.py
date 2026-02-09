@@ -37,7 +37,6 @@ def index(request: Request):
     )
 
 
-# Typical payload (ingredients = "avocado, tomato, toast")
 @api.get("/query_by_ingredients")
 def query_by_ingredients(
     ingredients: str,
@@ -54,7 +53,6 @@ def query_by_ingredients(
     return {"results": results}
 
 
-# Typical payload (name = "lasagna")
 @api.get("/query_by_name")
 def query_by_name(
     name: str,
@@ -71,6 +69,28 @@ def query_by_name(
         ingredients,
     )
     return {"results": results}
+
+
+@api.get("/ingredients/suggestions")
+def ingredient_suggestions(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(5, ge=1, le=20),
+    exclude: str | None = None,
+):
+    query = q.strip()
+    if not query or len(query) < 2:
+        return {"query": query, "suggestions": []}
+
+    exclude_items = {
+        item.strip().lower()
+        for item in (exclude or "").split(",")
+        if item.strip()
+    }
+    fetch_limit = limit + len(exclude_items)
+    suggestions = recommender_engine.get_suggestions(query, limit=fetch_limit)
+    if exclude_items:
+        suggestions = [item for item in suggestions if item.lower() not in exclude_items]
+    return {"query": query, "suggestions": suggestions[:limit]}
 
 
 # recipes table CRUD

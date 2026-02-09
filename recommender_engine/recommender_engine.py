@@ -179,8 +179,42 @@ class RecommenderEngine():
             self.ingredients_list,
             # scorer=fuzz.WRatio,
             processor=utils.default_process,
-            limit=limit
+            limit=35
         )
+        processed_results = []
+
+        # Pre-lowercase user_input once for efficiency
+        search_term = user_input.lower()
+
+        for text, score, index in results:
+            adjusted_score = score
+            lowered_text = text.lower()
+
+            # Penalty: Contains a space
+            if " " in text:
+                adjusted_score -= 5
+
+            # Penalty: search_term not in match
+            if search_term not in text.lower():
+                adjusted_score -= 5
+
+            # Penalty: 4+ characters longer than input
+            if len(text) >= len(user_input) + 4:
+                adjusted_score -= 5
+
+            # Boost: user input only shorter than search term by less than 3 chars
+            if len(text) - len(user_input) <= 3:
+                adjusted_score += 5
+
+            # Boost: match starts with search_term
+            if lowered_text.startswith(search_term):
+                adjusted_score += 5
+
+            processed_results.append((text, adjusted_score, index))
+
+        processed_results.sort(key=lambda x: x[1], reverse=True)
+
+        return [match[0] for match in processed_results[:limit]]
 
         # results returns a list of tuples: (string, score, index)
         return [match[0] for match in results if match[1] > 60]

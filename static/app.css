@@ -156,6 +156,109 @@ h1 {
   resize: vertical;
 }
 
+.ingredient-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+.ingredient-input:focus-within {
+  border-color: rgba(47, 126, 106, 0.5);
+  box-shadow: 0 0 0 3px rgba(47, 126, 106, 0.15);
+}
+
+.ingredient-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ingredient-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(214, 106, 45, 0.35);
+  background: rgba(214, 106, 45, 0.12);
+  font-size: 0.85rem;
+}
+
+.ingredient-remove {
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.ingredient-entry {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  padding: 6px 2px;
+  font: inherit;
+  background: transparent;
+}
+
+.ingredient-entry:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.ingredient-add {
+  border: 1px solid rgba(214, 106, 45, 0.4);
+  background: rgba(214, 106, 45, 0.1);
+  color: var(--ink);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ingredient-add:hover {
+  background: rgba(214, 106, 45, 0.18);
+}
+
+.ingredient-suggestions {
+  display: none;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.ingredient-suggestions.active {
+  display: block;
+}
+
+.ingredient-suggestion {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.ingredient-suggestion:hover,
+.ingredient-suggestion:focus {
+  background: rgba(47, 126, 106, 0.12);
+  outline: none;
+}
+
 .form-grid input:focus,
 .form-grid textarea:focus,
 .form-grid select:focus {
@@ -228,6 +331,12 @@ h1 {
 
 .status.error {
   color: #b0412e;
+}
+
+.field-hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .results {

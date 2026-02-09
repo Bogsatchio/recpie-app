@@ -29,7 +29,14 @@
           <form id="ingredients-form" class="form-grid">
             <label>
               Ingredients
-              <textarea name="ingredients" rows="3" placeholder="avocado, tomato, toast" required></textarea>
+              <div class="ingredient-input" data-ingredient-input>
+                <div class="ingredient-chips" data-ingredient-chips></div>
+                <input type="text" class="ingredient-entry" data-ingredient-entry placeholder="avocado" autocomplete="off">
+                <button class="ingredient-add" type="button" data-ingredient-add>Add</button>
+              </div>
+              <input type="hidden" name="ingredients" data-ingredient-hidden>
+              <div class="ingredient-suggestions" data-ingredient-suggestions></div>
+              <p class="field-hint">Enter one ingredient at a time, then press Enter or Add.</p>
             </label>
             <label>
               Max results
@@ -90,7 +97,14 @@
             </label>
             <label class="span-2">
               Optional ingredients filter
-              <input type="text" name="ingredients" placeholder="tomato, basil, olive oil">
+              <div class="ingredient-input" data-ingredient-input>
+                <div class="ingredient-chips" data-ingredient-chips></div>
+                <input type="text" class="ingredient-entry" data-ingredient-entry placeholder="tomato" autocomplete="off">
+                <button class="ingredient-add" type="button" data-ingredient-add>Add</button>
+              </div>
+              <input type="hidden" name="ingredients" data-ingredient-hidden>
+              <div class="ingredient-suggestions" data-ingredient-suggestions></div>
+              <p class="field-hint">Add ingredients to narrow the results.</p>
             </label>
             <div class="form-actions">
               <button class="primary" type="submit">Search recipes</button>
